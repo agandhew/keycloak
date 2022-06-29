@@ -71,6 +71,25 @@ public class GroupStorageManager extends AbstractStorageManager<GroupStorageProv
         return Stream.concat(local, ext);
     }
 
+    /**
+     * Returns the group hierarchy with the given attribute name and attribute value for the given realm.
+     * <p>
+     * For a matching group node the parent group is fetched by id (with all children) and added to the result stream.
+     * This is done until the group node does not have a parent (root group)
+     *
+     * @param realm          Realm.
+     * @param attributeName  Case sensitive attribute name.
+     * @param attributeValue Case sensitive attribute value.
+     * @param firstResult    First result to return. Ignored if negative or {@code null}.
+     * @param maxResults     Maximum number of results to return. Ignored if negative or {@code null}.
+     * @return Stream of root groups that have the given string in their name themself or a group in their child-collection has.
+     * The returned hierarchy contains siblings that do not necessarily have a matching name. Never returns {@code null}.
+     */
+    @Override
+    public Stream<GroupModel> searchForGroupByAttributeStream(RealmModel realm, String attributeName, String attributeValue, Integer firstResult, Integer maxResults) {
+        return Stream.empty();
+    }
+
     /* GROUP PROVIDER METHODS - provided only by local storage (e.g. not supported by storage providers) */
 
     @Override

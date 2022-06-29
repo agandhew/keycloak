@@ -1029,6 +1029,11 @@ public class RealmCacheSession implements CacheRealmProvider {
     }
 
     @Override
+    public Stream<GroupModel> searchForGroupByAttributeStream(RealmModel realm, String attributeName, String attributeValue, Integer firstResult, Integer maxResults) {
+        return getGroupDelegate().searchForGroupByAttributeStream(realm, attributeName, attributeValue, firstResult, maxResults);
+    }
+
+    @Override
     public boolean removeGroup(RealmModel realm, GroupModel group) {
         invalidateGroup(group.getId(), realm.getId(), true);
         listInvalidations.add(realm.getId());

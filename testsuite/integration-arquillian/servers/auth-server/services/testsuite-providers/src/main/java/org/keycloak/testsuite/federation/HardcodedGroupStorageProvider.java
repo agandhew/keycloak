@@ -67,6 +67,19 @@ public class HardcodedGroupStorageProvider implements GroupStorageProvider {
         return Stream.empty();
     }
 
+    @Override
+    public Stream<GroupModel> searchForGroupByAttributeStream(RealmModel realm, String attributeName, String attributeValue, Integer firstResult, Integer maxResults) {
+        if (Boolean.parseBoolean(component.getConfig().getFirst(HardcodedGroupStorageProviderFactory.DELAYED_SEARCH))) try {
+            Thread.sleep(5000l);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(HardcodedGroupStorageProvider.class).warn(ex.getCause());
+            return Stream.empty();
+        }
+        //TODO : Incomplete implementation
+
+        return Stream.empty();
+    }
+
 
     public class HardcodedGroupAdapter implements GroupModel.Streams {
 
