@@ -20,6 +20,7 @@ import org.keycloak.models.GroupModel;
 import org.keycloak.models.RealmModel;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -65,19 +66,18 @@ public interface GroupLookupProvider {
     Stream<GroupModel> searchForGroupByNameStream(RealmModel realm, String search, Integer firstResult, Integer maxResults);
 
     /**
-     * Returns the group hierarchy with the given attribute name and attribute value for the given realm.
+     * Returns the group hierarchy filtered by attribute names and attribute values for the given realm.
      *
      * For a matching group node the parent group is fetched by id (with all children) and added to the result stream.
      * This is done until the group node does not have a parent (root group)
      *
      * @param realm Realm.
-     * @param attributeName Case sensitive attribute name.
-     * @param attributeValue Case sensitive attribute value.
+     * @param attributes Case sensitive attributes.
      * @param firstResult First result to return. Ignored if negative or {@code null}.
      * @param maxResults Maximum number of results to return. Ignored if negative or {@code null}.
      * @return Stream of root groups that have the given string in their name themself or a group in their child-collection has.
      * The returned hierarchy contains siblings that do not necessarily have a matching name. Never returns {@code null}.
      */
-    Stream<GroupModel> searchForGroupByAttributeStream(RealmModel realm, String attributeName,String attributeValue, Integer firstResult, Integer maxResults);
+    Stream<GroupModel> searchGroupsByAttributes(RealmModel realm, Map<String, String> attributes, Integer firstResult, Integer maxResults);
 
 }

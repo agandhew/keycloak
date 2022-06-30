@@ -33,6 +33,7 @@ import org.keycloak.models.map.storage.QueryParameters;
 
 import org.keycloak.models.map.storage.criteria.DefaultModelCriteria;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -187,9 +188,8 @@ public class MapGroupProvider implements GroupProvider {
     }
 
     @Override
-    public Stream<GroupModel> searchForGroupByAttributeStream(RealmModel realm, String attributeName, String attributeValue, Integer firstResult, Integer maxResults) {
-        //TODO: Implementation remaining
-	return null;
+    public Stream<GroupModel> searchGroupsByAttributes(RealmModel realm, Map<String, String> attributes, Integer firstResult, Integer maxResults) {
+        return null;
     }
 
     @Override

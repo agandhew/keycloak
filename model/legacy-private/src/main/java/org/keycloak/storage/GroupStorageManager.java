@@ -26,6 +26,7 @@ import org.keycloak.storage.group.GroupStorageProvider;
 import org.keycloak.storage.group.GroupStorageProviderFactory;
 import org.keycloak.storage.group.GroupStorageProviderModel;
 
+import java.util.Map;
 import java.util.stream.Stream;
 
 public class GroupStorageManager extends AbstractStorageManager<GroupStorageProvider, GroupStorageProviderModel> implements GroupProvider {
@@ -78,15 +79,14 @@ public class GroupStorageManager extends AbstractStorageManager<GroupStorageProv
      * This is done until the group node does not have a parent (root group)
      *
      * @param realm          Realm.
-     * @param attributeName  Case sensitive attribute name.
-     * @param attributeValue Case sensitive attribute value.
+     * @param attributes  Case sensitive attribute name.
      * @param firstResult    First result to return. Ignored if negative or {@code null}.
      * @param maxResults     Maximum number of results to return. Ignored if negative or {@code null}.
      * @return Stream of root groups that have the given string in their name themself or a group in their child-collection has.
      * The returned hierarchy contains siblings that do not necessarily have a matching name. Never returns {@code null}.
      */
     @Override
-    public Stream<GroupModel> searchForGroupByAttributeStream(RealmModel realm, String attributeName, String attributeValue, Integer firstResult, Integer maxResults) {
+    public Stream<GroupModel> searchGroupsByAttributes(RealmModel realm, Map<String, String> attributes, Integer firstResult, Integer maxResults) {
         return Stream.empty();
     }
 

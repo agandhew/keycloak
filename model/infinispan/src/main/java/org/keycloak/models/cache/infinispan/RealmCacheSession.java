@@ -1029,8 +1029,8 @@ public class RealmCacheSession implements CacheRealmProvider {
     }
 
     @Override
-    public Stream<GroupModel> searchForGroupByAttributeStream(RealmModel realm, String attributeName, String attributeValue, Integer firstResult, Integer maxResults) {
-        return getGroupDelegate().searchForGroupByAttributeStream(realm, attributeName, attributeValue, firstResult, maxResults);
+    public Stream<GroupModel> searchGroupsByAttributes(RealmModel realm, Map<String, String> attributes, Integer firstResult, Integer maxResults) {
+        return getGroupDelegate().searchGroupsByAttributes(realm, attributes, firstResult, maxResults);
     }
 
     @Override

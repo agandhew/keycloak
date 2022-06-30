@@ -1941,6 +1941,11 @@ public class RealmAdapter implements RealmModel, JpaModel<RealmEntity> {
     }
 
     @Override
+    public Stream<GroupModel> searchGroupsByAttributes(Map<String, String> attributes, Integer first, Integer max) {
+        return session.groups().searchGroupsByAttributes(this, attributes, first, max);
+    }
+
+    @Override
     public boolean removeGroup(GroupModel group) {
         return session.groups().removeGroup(this, group);
     }

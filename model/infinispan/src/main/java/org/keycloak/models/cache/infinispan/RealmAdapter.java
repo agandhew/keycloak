@@ -1483,6 +1483,11 @@ public class RealmAdapter implements CachedRealmModel {
     }
 
     @Override
+    public Stream<GroupModel> searchGroupsByAttributes(Map<String, String> attributes, Integer firstResult, Integer maxResults) {
+        return cacheSession.searchGroupsByAttributes(this, attributes, firstResult, maxResults);
+    }
+
+    @Override
     public boolean removeGroup(GroupModel group) {
         return cacheSession.removeGroup(this, group);
     }

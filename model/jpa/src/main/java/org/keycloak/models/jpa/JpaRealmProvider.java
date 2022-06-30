@@ -61,14 +61,7 @@ import org.keycloak.models.RoleContainerModel.RoleRemovedEvent;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.RoleProvider;
 import org.keycloak.models.delegate.ClientModelLazyDelegate;
-import org.keycloak.models.jpa.entities.ClientAttributeEntity;
-import org.keycloak.models.jpa.entities.ClientEntity;
-import org.keycloak.models.jpa.entities.ClientScopeClientMappingEntity;
-import org.keycloak.models.jpa.entities.ClientScopeEntity;
-import org.keycloak.models.jpa.entities.GroupEntity;
-import org.keycloak.models.jpa.entities.RealmEntity;
-import org.keycloak.models.jpa.entities.RealmLocalizationTextsEntity;
-import org.keycloak.models.jpa.entities.RoleEntity;
+import org.keycloak.models.jpa.entities.*;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.models.utils.KeycloakModelUtils;
 
@@ -81,11 +74,13 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
     private final KeycloakSession session;
     protected EntityManager em;
     private Set<String> clientSearchableAttributes;
+    private Set<String> groupSearchableAttributes;
 
-    public JpaRealmProvider(KeycloakSession session, EntityManager em, Set<String> clientSearchableAttributes) {
+    public JpaRealmProvider(KeycloakSession session, EntityManager em, Set<String> clientSearchableAttributes,Set<String> groupSearchableAttributes) {
         this.session = session;
         this.em = em;
         this.clientSearchableAttributes = clientSearchableAttributes;
+        this.groupSearchableAttributes = groupSearchableAttributes;
     }
 
     @Override
@@ -948,21 +943,36 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
     }
 
     @Override
-    public Stream<GroupModel> searchForGroupByAttributeStream(RealmModel realm, String attributeName, String attributeValue, Integer firstResult, Integer maxResults) {
-        TypedQuery<String> query = em.createNamedQuery("getGroupIdsByAttributeNameAndAttributeValue", String.class)
-                .setParameter("realm", realm.getId())
-                .setParameter("name", attributeName)
-                .setParameter("value", attributeValue);
+    public Stream<GroupModel> searchGroupsByAttributes(RealmModel realm, Map<String, String> attributes, Integer firstResult, Integer maxResults) {
+        Map<String, String> filteredAttributes = groupSearchableAttributes == null ? attributes :
+                attributes.entrySet().stream().filter(m -> groupSearchableAttributes.contains(m.getKey()))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        Stream<String> groups =  paginateQuery(query, firstResult, maxResults).getResultStream();
+        CriteriaBuilder builder = em.getCriteriaBuilder();
+        CriteriaQuery<GroupEntity> queryBuilder = builder.createQuery(GroupEntity.class);
+        Root<GroupEntity> root = queryBuilder.from(GroupEntity.class);
 
-        return closing(groups.map(id -> {
-            GroupModel groupById = session.groups().getGroupById(realm, id);
-            while (Objects.nonNull(groupById.getParentId())) {
-                groupById = session.groups().getGroupById(realm, groupById.getParentId());
-            }
-            return groupById;
-        }).distinct());
+        List<Predicate> predicates = new ArrayList<>();
+
+        predicates.add(builder.equal(root.get("realmId"), realm.getId()));
+
+        for (Map.Entry<String, String> entry : filteredAttributes.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+
+            Join<GroupEntity, GroupAttributeEntity> attributeJoin = root.join("attributes");
+
+            Predicate attrNamePredicate = builder.equal(attributeJoin.get("name"), key);
+            Predicate attrValuePredicate = builder.equal(attributeJoin.get("value"), value);
+            predicates.add(builder.and(attrNamePredicate, attrValuePredicate));
+        }
+
+        Predicate finalPredicate = builder.and(predicates.toArray(new Predicate[0]));
+        queryBuilder.where(finalPredicate).orderBy(builder.asc(root.get("groupId")));
+
+        TypedQuery<GroupEntity> query = em.createQuery(queryBuilder);
+        return closing(paginateQuery(query, firstResult, maxResults).getResultStream())
+                .map(g -> session.groups().getGroupById(realm, g.getId()));
     }
 
     @Override
@@ -1054,5 +1064,9 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
 
     public Set<String> getClientSearchableAttributes() {
         return clientSearchableAttributes;
+    }
+
+    public Set<String> getGroupSearchableAttributes() {
+        return groupSearchableAttributes;
     }
 }

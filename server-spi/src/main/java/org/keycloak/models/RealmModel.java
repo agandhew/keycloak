@@ -905,6 +905,15 @@ public interface RealmModel extends RoleContainerModel {
      */
     Stream<GroupModel> searchForGroupByNameStream(String search, Integer first, Integer max);
 
+    /**
+     * Searches for groups by provided group attributes. Results that match the given filter are returned as a stream.
+     * @param attributes {@code String} Name of a group to be used as a filter.
+     * @param first {@code Integer} Index of the first desired group. Ignored if negative or {@code null}.
+     * @param max {@code Integer} Maximum number of returned groups. Ignored if negative or {@code null}.
+     * @return Stream of {@link GroupModel}. Never returns {@code null}.
+     */
+    Stream<GroupModel> searchGroupsByAttributes(Map<String, String> attributes, Integer first, Integer max);
+
     boolean removeGroup(GroupModel group);
     void moveGroup(GroupModel group, GroupModel toParent);
 
