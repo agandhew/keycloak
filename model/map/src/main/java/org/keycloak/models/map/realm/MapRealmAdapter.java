@@ -1439,7 +1439,7 @@ public class MapRealmAdapter extends AbstractRealmModel<MapRealmEntity> implemen
      */
     @Override
     public Stream<GroupModel> searchGroupsByAttributes(Map<String, String> attributes, Integer first, Integer max) {
-        return null;
+        return session.groups().searchGroupsByAttributes(this, attributes, first, max);
     }
 
     @Override
