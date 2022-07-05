@@ -155,6 +155,12 @@ public class ModelToRepresentation {
         return rep;
     }
 
+    public static Stream<GroupRepresentation> searchGroupsByAttributes(RealmModel realm, boolean full, Map<String,String> attributes, Integer first, Integer max) {
+        return realm.searchGroupsByAttributes(attributes, first, max)
+                .map(g -> toGroupHierarchy(g,full,attributes));
+
+    }
+
     public static Stream<GroupRepresentation> searchForGroupByName(RealmModel realm, boolean full, String search, Integer first, Integer max) {
         return realm.searchForGroupByNameStream(search, first, max)
                 .map(g -> toGroupHierarchy(g, full, search));
@@ -186,7 +192,7 @@ public class ModelToRepresentation {
     }
 
     public static GroupRepresentation toGroupHierarchy(GroupModel group, boolean full) {
-        return toGroupHierarchy(group, full, null);
+        return toGroupHierarchy(group, full, (String) null);
     }
 
     public static GroupRepresentation toGroupHierarchy(GroupModel group, boolean full, String search) {
@@ -198,6 +204,13 @@ public class ModelToRepresentation {
         return rep;
     }
 
+    public static GroupRepresentation toGroupHierarchy(GroupModel group, boolean full, Map<String,String> attributes) {
+        GroupRepresentation rep = toRepresentation(group, full);
+        List<GroupRepresentation> subGroups = group.getSubGroupsStream()
+                .map(subGroup -> toGroupHierarchy(subGroup, full, attributes)).collect(Collectors.toList());
+        rep.setSubGroups(subGroups);
+        return rep;
+    }
     private static boolean groupMatchesSearchOrIsPathElement(GroupModel group, String search) {
         if (StringUtil.isBlank(search)) {
             return true;
