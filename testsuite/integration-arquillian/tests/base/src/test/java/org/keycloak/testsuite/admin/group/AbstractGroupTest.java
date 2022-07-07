@@ -17,18 +17,28 @@
 
 package org.keycloak.testsuite.admin.group;
 
+import javax.ws.rs.core.Response;
+import org.jboss.arquillian.graphene.page.Page;
 import org.junit.Rule;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.RSATokenVerifier;
+import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.common.util.PemUtils;
 import org.keycloak.events.Details;
+import org.keycloak.events.admin.OperationType;
+import org.keycloak.events.admin.ResourceType;
 import org.keycloak.jose.jws.JWSInput;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.RefreshToken;
+import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.AssertEvents;
 import org.keycloak.testsuite.admin.ApiUtil;
+import org.keycloak.testsuite.auth.page.AuthRealm;
+import org.keycloak.testsuite.util.AdminEventPaths;
 import org.keycloak.testsuite.util.AssertAdminEvents;
 import org.keycloak.testsuite.util.OAuthClient.AccessTokenResponse;
 
@@ -43,6 +53,9 @@ import static org.keycloak.testsuite.util.ServerURLs.getAuthServerContextRoot;
  * @author <a href="mailto:mstrukel@redhat.com">Marko Strukelj</a>
  */
 public abstract class AbstractGroupTest extends AbstractKeycloakTest {
+
+    @Page
+    protected AuthRealm testRealmPage;
 
     protected String testRealmId;
 
@@ -90,5 +103,55 @@ public abstract class AbstractGroupTest extends AbstractKeycloakTest {
         RealmRepresentation result = loadRealm("/testrealm.json");
         testRealms.add(result);
         return result;
+    }
+
+    GroupRepresentation createGroup(RealmResource realm, String group) {
+        GroupRepresentation groupRepresentation = new GroupRepresentation();
+        try (Response response = realm.groups().add(groupRepresentation)) {
+            String groupId = ApiUtil.getCreatedId(response);
+            getCleanup().addGroupId(groupId);
+
+            assertAdminEvents.assertEvent(testRealmId, OperationType.CREATE, AdminEventPaths.groupPath(groupId), group, ResourceType.GROUP);
+
+            // Set ID to the original rep
+            groupRepresentation.setId(groupId);
+            return groupRepresentation;
+        }
+    }
+
+    GroupRepresentation createGroup(RealmResource realm, GroupRepresentation group) {
+        try (Response response = realm.groups().add(group)) {
+            String groupId = ApiUtil.getCreatedId(response);
+            getCleanup().addGroupId(groupId);
+
+            assertAdminEvents.assertEvent(testRealmId, OperationType.CREATE, AdminEventPaths.groupPath(groupId), group, ResourceType.GROUP);
+
+            // Set ID to the original rep
+            group.setId(groupId);
+            return group;
+        }
+    }
+
+    void removeGroup(RealmResource realm, String groupId) {
+        // TODO: removing groups isn't the same as adding them so unclear how to accomplish this
+    }
+
+    void addSubGroup(RealmResource realm, GroupRepresentation parent, GroupRepresentation child) {
+        Response response = realm.groups().add(child);
+        child.setId(ApiUtil.getCreatedId(response));
+        response = realm.groups().group(parent.getId()).subGroup(child);
+        response.close();
+    }
+
+    RoleRepresentation createRealmRole(RealmResource realm, RoleRepresentation role) {
+        realm.roles().create(role);
+
+        RoleRepresentation created = realm.roles().get(role.getName()).toRepresentation();
+        getCleanup().addRoleId(created.getId());
+        return created;
+    }
+
+    public RealmResource testRealmResource() {
+        return adminClient.realm(testRealmPage.getAuthRealm());
     }
 }
