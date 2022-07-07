@@ -34,7 +34,7 @@
                 <dbms type="oracle"/>
             </or>
         </preConditions>
-        <createIndex tableName="GROUP_ATTRIBUTES" indexName="IDX_GROUP_ATT_BY_NAME_VALUE">
+        <createIndex tableName="GROUP_ATTRIBUTE" indexName="IDX_GROUP_ATT_BY_NAME_VALUE">
             <column name="NAME" type="VARCHAR(255)"/>
             <column name="VALUE(255)" valueComputed="VALUE(255)" />
         </createIndex>
@@ -57,7 +57,7 @@
                 </or>
             </not>
         </preConditions>
-        <createIndex tableName="GROUP_ATTRIBUTES" indexName="IDX_GROUP_ATT_BY_NAME_VALUE">
+        <createIndex tableName="GROUP_ATTRIBUTE" indexName="IDX_GROUP_ATT_BY_NAME_VALUE">
             <column name="NAME" type="VARCHAR(255)"/>
             <!-- Do not include VALUE column -->
         </createIndex>
