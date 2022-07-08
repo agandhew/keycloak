@@ -40,6 +40,7 @@ import javax.persistence.criteria.Join;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.jboss.logging.Logger;
 import org.keycloak.common.util.Time;
 import org.keycloak.connections.jpa.util.JpaUtils;
@@ -944,7 +945,7 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
 
     @Override
     public Stream<GroupModel> searchGroupsByAttributes(RealmModel realm, Map<String, String> attributes, Integer firstResult, Integer maxResults) {
-        Map<String, String> filteredAttributes = groupSearchableAttributes == null ? attributes :
+        Map<String, String> filteredAttributes = CollectionUtils.isEmpty(groupSearchableAttributes) ? attributes :
                 attributes.entrySet().stream().filter(m -> groupSearchableAttributes.contains(m.getKey()))
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
