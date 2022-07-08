@@ -954,7 +954,7 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
 
         List<Predicate> predicates = new ArrayList<>();
 
-        predicates.add(builder.equal(root.get("realmId"), realm.getId()));
+        predicates.add(builder.equal(root.get("realm"), realm.getId()));
 
         for (Map.Entry<String, String> entry : filteredAttributes.entrySet()) {
             String key = entry.getKey();
@@ -968,7 +968,7 @@ public class JpaRealmProvider implements RealmProvider, ClientProvider, ClientSc
         }
 
         Predicate finalPredicate = builder.and(predicates.toArray(new Predicate[0]));
-        queryBuilder.where(finalPredicate).orderBy(builder.asc(root.get("groupId")));
+        queryBuilder.where(finalPredicate).orderBy(builder.asc(root.get("id")));
 
         TypedQuery<GroupEntity> query = em.createQuery(queryBuilder);
         return closing(paginateQuery(query, firstResult, maxResults).getResultStream())
