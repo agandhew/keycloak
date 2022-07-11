@@ -107,6 +107,7 @@ public abstract class AbstractGroupTest extends AbstractKeycloakTest {
 
     GroupRepresentation createGroup(RealmResource realm, String group) {
         GroupRepresentation groupRepresentation = new GroupRepresentation();
+        groupRepresentation.setName(group);
         try (Response response = realm.groups().add(groupRepresentation)) {
             String groupId = ApiUtil.getCreatedId(response);
             getCleanup().addGroupId(groupId);

@@ -4,10 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude.AuthServer.REMOTE;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.ArrayUtils;
 import org.jboss.arquillian.container.test.api.ContainerController;
@@ -16,8 +13,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.keycloak.models.GroupProvider;
+import org.keycloak.representations.AccessToken;
+import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.MappingsRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testsuite.arquillian.AuthServerTestEnricher;
 import org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude;
 import org.keycloak.testsuite.arquillian.containers.KeycloakQuarkusServerDeployableContainer;
@@ -193,6 +196,30 @@ public class GroupSearchTest extends AbstractGroupTest {
 
   @Override
   public void addTestRealms(List<RealmRepresentation> testRealms) {
+    RealmRepresentation testRealmRep = loadTestRealm(testRealms);
 
+    testRealmRep.setEventsEnabled(true);
+
+    List<UserRepresentation> users = testRealmRep.getUsers();
+
+    UserRepresentation user = new UserRepresentation();
+    user.setUsername("direct-login");
+    user.setEmail("direct-login@localhost");
+    user.setEnabled(true);
+    List<CredentialRepresentation> credentials = new LinkedList<>();
+    CredentialRepresentation credential = new CredentialRepresentation();
+    credential.setType(CredentialRepresentation.PASSWORD);
+    credential.setValue("password");
+    credentials.add(credential);
+    user.setCredentials(credentials);
+    users.add(user);
+
+    List<ClientRepresentation> clients = testRealmRep.getClients();
+
+    ClientRepresentation client = new ClientRepresentation();
+    client.setClientId("resource-owner");
+    client.setDirectAccessGrantsEnabled(true);
+    client.setSecret("secret");
+    clients.add(client);
   }
 }
