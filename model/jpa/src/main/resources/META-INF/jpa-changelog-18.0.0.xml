@@ -25,42 +25,4 @@
         </createIndex>
     </changeSet>
 
-    <changeSet author="keycloak" id="18.0.0-KEYCLOAK-JIRA-ID-supported-dbs">
-        <preConditions onSqlOutput="TEST" onFail="MARK_RAN">
-            <or>
-                <dbms type="mysql"/>
-                <dbms type="mariadb"/>
-                <dbms type="postgresql"/>
-                <dbms type="oracle"/>
-            </or>
-        </preConditions>
-        <createIndex tableName="GROUP_ATTRIBUTE" indexName="IDX_GROUP_ATT_BY_NAME_VALUE">
-            <column name="NAME" type="VARCHAR(255)"/>
-            <column name="VALUE(255)" valueComputed="VALUE(255)" />
-        </createIndex>
-        <modifySql dbms="postgresql">
-            <replace replace="VALUE(255)" with="(value::varchar(250))" />
-        </modifySql>
-        <modifySql dbms="oracle">
-            <replace replace="VALUE(255)" with="SUBSTR(VALUE, 1, 250)" />
-        </modifySql>
-    </changeSet>
-
-    <changeSet author="keycloak" id="18.0.0-KEYCLOAK-JIRA-ID-unsupported-dbs">
-        <preConditions onSqlOutput="TEST" onFail="MARK_RAN">
-            <not>
-                <or>
-                    <dbms type="mysql"/>
-                    <dbms type="mariadb"/>
-                    <dbms type="postgresql"/>
-                    <dbms type="oracle"/>
-                </or>
-            </not>
-        </preConditions>
-        <createIndex tableName="GROUP_ATTRIBUTE" indexName="IDX_GROUP_ATT_BY_NAME_VALUE">
-            <column name="NAME" type="VARCHAR(255)"/>
-            <!-- Do not include VALUE column -->
-        </createIndex>
-    </changeSet>
-
 </databaseChangeLog>
