@@ -105,21 +105,6 @@ public abstract class AbstractGroupTest extends AbstractKeycloakTest {
         return result;
     }
 
-    GroupRepresentation createGroup(RealmResource realm, String group) {
-        GroupRepresentation groupRepresentation = new GroupRepresentation();
-        groupRepresentation.setName(group);
-        try (Response response = realm.groups().add(groupRepresentation)) {
-            String groupId = ApiUtil.getCreatedId(response);
-            getCleanup().addGroupId(groupId);
-
-            assertAdminEvents.assertEvent(testRealmId, OperationType.CREATE, AdminEventPaths.groupPath(groupId), group, ResourceType.GROUP);
-
-            // Set ID to the original rep
-            groupRepresentation.setId(groupId);
-            return groupRepresentation;
-        }
-    }
-
     GroupRepresentation createGroup(RealmResource realm, GroupRepresentation group) {
         try (Response response = realm.groups().add(group)) {
             String groupId = ApiUtil.getCreatedId(response);
@@ -131,10 +116,6 @@ public abstract class AbstractGroupTest extends AbstractKeycloakTest {
             group.setId(groupId);
             return group;
         }
-    }
-
-    void removeGroup(RealmResource realm, String groupId) {
-        // TODO: removing groups isn't the same as adding them so unclear how to accomplish this
     }
 
     void addSubGroup(RealmResource realm, GroupRepresentation parent, GroupRepresentation child) {
@@ -150,9 +131,5 @@ public abstract class AbstractGroupTest extends AbstractKeycloakTest {
         RoleRepresentation created = realm.roles().get(role.getName()).toRepresentation();
         getCleanup().addRoleId(created.getId());
         return created;
-    }
-
-    public RealmResource testRealmResource() {
-        return adminClient.realm(testRealmPage.getAuthRealm());
     }
 }

@@ -12,14 +12,13 @@ import org.jboss.arquillian.test.api.ArquillianResource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.keycloak.admin.client.resource.GroupsResource;
+import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.models.GroupProvider;
-import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.GroupRepresentation;
-import org.keycloak.representations.idm.MappingsRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
-import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testsuite.arquillian.AuthServerTestEnricher;
 import org.keycloak.testsuite.arquillian.annotation.AuthServerContainerExclude;
@@ -51,9 +50,10 @@ public class GroupSearchTest extends AbstractGroupTest {
 
   @Before
   public void init() {
-    GroupRepresentation group1 = createGroup(testRealmResource(), GROUP1);
-    GroupRepresentation group2 = createGroup(testRealmResource(), GROUP2);
-    GroupRepresentation group3 = createGroup(testRealmResource(), GROUP3);
+
+    GroupRepresentation group1 = new GroupRepresentation();
+    GroupRepresentation group2 = new GroupRepresentation();
+    GroupRepresentation group3 = new GroupRepresentation();
 
     group1.setAttributes(new HashMap<String, List<String>>() {{
       put(ATTR_ORG_NAME, Collections.singletonList(ATTR_ORG_VAL));
@@ -70,6 +70,14 @@ public class GroupSearchTest extends AbstractGroupTest {
       put(ATTR_URL_NAME, Collections.singletonList(ATTR_URL_VAL));
     }});
 
+    group1.setName("group1");
+    group2.setName("group2");
+    group3.setName("group3");
+
+    group1 = createGroup(testRealmResource(), group1);
+    group2 = createGroup(testRealmResource(), group2);
+    group3 = createGroup(testRealmResource(), group3);
+
     group1Id = group1.getId();
     group2Id = group2.getId();
     group3Id = group3.getId();
@@ -77,9 +85,13 @@ public class GroupSearchTest extends AbstractGroupTest {
 
   @After
   public void teardown() {
-    removeGroup(testRealmResource(), group1Id);
-    removeGroup(testRealmResource(), group2Id);
-    removeGroup(testRealmResource(), group3Id);
+    testContext.setTestRealmReps(new ArrayList<>());
+    RealmResource realmResource = adminClient.realm(testRealmId);
+    realmResource.remove();
+  }
+
+  public RealmResource testRealmResource() {
+    return adminClient.realm(testRealmId);
   }
 
   @Test
@@ -116,7 +128,8 @@ public class GroupSearchTest extends AbstractGroupTest {
   }
 
   private void search(String searchQuery, String... expectedClientIds) {
-    List<String> found = testRealmResource().groups().groups(searchQuery, null, null).stream()
+    GroupsResource search = testRealmResource().groups();
+    List<String> found = search.groups(searchQuery, null, null).stream()
         .map(GroupRepresentation::getId)
         .collect(Collectors.toList());
     assertThat(found, containsInAnyOrder(expectedClientIds));
