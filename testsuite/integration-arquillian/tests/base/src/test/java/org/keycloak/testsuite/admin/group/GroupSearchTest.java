@@ -46,7 +46,13 @@ public class GroupSearchTest extends AbstractGroupTest {
   private static final String ATTR_FILTERED_NAME = "filtered";
   private static final String ATTR_FILTERED_VAL = "does_not_matter";
 
-  private static final String SEARCHABLE_ATTRS_PROP = "keycloak.client.searchableAttributes";
+  private static final String ATTR_QUOTES_NAME = "test \"123\"";
+
+  private static final String ATTR_QUOTES_NAME_ESCAPED = "\"test \\\"123\\\"\"";
+  private static final String ATTR_QUOTES_VAL = "field=\"blah blah\"";
+  private static final String ATTR_QUOTES_VAL_ESCAPED = "\"field=\\\"blah blah\\\"\"";
+
+  private static final String SEARCHABLE_ATTRS_PROP = "keycloak.group.searchableAttributes";
 
   @Before
   public void init() {
@@ -61,13 +67,13 @@ public class GroupSearchTest extends AbstractGroupTest {
     }});
 
     group2.setAttributes(new HashMap<String, List<String>>() {{
-      put(ATTR_ORG_NAME, Collections.singletonList(ATTR_ORG_VAL));
+      put(ATTR_FILTERED_NAME, Collections.singletonList(ATTR_FILTERED_VAL));
       put(ATTR_URL_NAME, Collections.singletonList(ATTR_URL_VAL));
     }});
 
     group3.setAttributes(new HashMap<String, List<String>>() {{
       put(ATTR_ORG_NAME, Collections.singletonList("fake group"));
-      put(ATTR_URL_NAME, Collections.singletonList(ATTR_URL_VAL));
+      put(ATTR_QUOTES_NAME, Collections.singletonList(ATTR_QUOTES_VAL));
     }});
 
     group1.setName("group1");
@@ -99,13 +105,13 @@ public class GroupSearchTest extends AbstractGroupTest {
     try {
       // I assume the structure of this query is going to be not quite right but something before this
       // point is broken at the moment so I can't debug and figure it out
-      configureSearchableAttributes(ATTR_URL_NAME, ATTR_ORG_NAME);
+      configureSearchableAttributes(ATTR_URL_NAME, ATTR_ORG_NAME, ATTR_QUOTES_NAME);
       search(String.format("%s:%s", ATTR_ORG_NAME, ATTR_ORG_VAL), GROUP1);
       search(String.format("%s:%s", ATTR_URL_NAME, ATTR_URL_VAL), GROUP1, GROUP2);
       search(String.format("%s:%s %s:%s", ATTR_ORG_NAME, ATTR_ORG_VAL, ATTR_URL_NAME, ATTR_URL_VAL),
           GROUP1);
       search(String.format("%s:%s %s:%s", ATTR_ORG_NAME, "wrong val", ATTR_URL_NAME, ATTR_URL_VAL));
-      search(String.format("%s:%s", ATTR_ORG_NAME, "fake group"), GROUP3);
+      search(String.format("%s:%s", ATTR_QUOTES_NAME_ESCAPED, ATTR_QUOTES_VAL_ESCAPED), GROUP3);
 
       // "filtered" attribute won't take effect when JPA is used
       String[] expectedRes = isJpaStore() ? new String[]{GROUP1, GROUP2} : new String[]{GROUP2};
@@ -121,18 +127,18 @@ public class GroupSearchTest extends AbstractGroupTest {
     String[] expectedRes = {GROUP1};
     // JPA store removes all attributes by default, i.e. returns all clients
     if (isJpaStore()) {
-      expectedRes = ArrayUtils.addAll(expectedRes, GROUP2, GROUP3, "account", "account-console", "admin-cli", "broker", "realm-management", "security-admin-console");
+      expectedRes = ArrayUtils.addAll(expectedRes, GROUP2, GROUP3);
     }
 
     search(String.format("%s:%s", ATTR_ORG_NAME, ATTR_ORG_VAL), expectedRes);
   }
 
-  private void search(String searchQuery, String... expectedClientIds) {
+  private void search(String searchQuery, String... expectedGroupIds) {
     GroupsResource search = testRealmResource().groups();
-    List<String> found = search.groups(searchQuery, null, null).stream()
-        .map(GroupRepresentation::getId)
+    List<String> found = search.query(searchQuery).stream()
+        .map(GroupRepresentation::getName)
         .collect(Collectors.toList());
-    assertThat(found, containsInAnyOrder(expectedClientIds));
+    assertThat(found, containsInAnyOrder(expectedGroupIds));
   }
 
   void configureSearchableAttributes(String... searchableAttributes) throws Exception {
