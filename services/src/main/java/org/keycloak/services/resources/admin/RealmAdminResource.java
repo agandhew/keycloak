@@ -849,8 +849,14 @@ public class RealmAdminResource {
         }
 
         if (resourceTypes != null && !resourceTypes.isEmpty()) {
-            query.resourceType(resourceTypes);
+            ResourceType[] t = new ResourceType[resourceTypes.size()];
+            for (int i = 0; i < t.length; i++) {
+                t[i] = ResourceType.valueOf(resourceTypes.get(i));
+            }
+            query.resourceType(t);
         }
+
+
 
         if(dateFrom != null) {
             SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
@@ -1071,23 +1077,6 @@ public class RealmAdminResource {
         ExportOptions options = new ExportOptions(false, clientsExported, groupsAndRolesExported, clientsExported);
         RealmRepresentation rep = ExportUtils.exportRealm(session, realm, options, false);
         return stripForExport(session, rep);
-    }
-
-    /**
-     * Clear cache of external public keys (Public keys of clients or Identity providers)
-     *
-     */
-    @Path("clear-keys-cache")
-    @POST
-    public void clearKeysCache() {
-        auth.realm().requireManageRealm();
-
-        PublicKeyStorageProvider cache = session.getProvider(PublicKeyStorageProvider.class);
-        if (cache != null) {
-            cache.clearCache();
-        }
-
-        adminEvent.operation(OperationType.ACTION).resourcePath(session.getContext().getUri()).success();
     }
 
     @Path("keys")

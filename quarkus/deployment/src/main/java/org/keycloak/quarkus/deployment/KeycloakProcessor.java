@@ -21,7 +21,7 @@ import static org.keycloak.quarkus.runtime.Providers.getProviderManager;
 import static org.keycloak.quarkus.runtime.configuration.Configuration.getPropertyNames;
 import static org.keycloak.quarkus.runtime.configuration.MicroProfileConfigProvider.NS_QUARKUS;
 import static org.keycloak.quarkus.runtime.configuration.QuarkusPropertiesConfigSource.QUARKUS_PROPERTY_ENABLED;
-import static org.keycloak.quarkus.runtime.storage.database.jpa.QuarkusJpaConnectionProviderFactory.QUERY_PROPERTY_PREFIX;
+import static org.keycloak.quarkus.runtime.storage.legacy.database.LegacyJpaConnectionProviderFactory.QUERY_PROPERTY_PREFIX;
 import static org.keycloak.connections.jpa.util.JpaUtils.loadSpecificNamedQueries;
 import static org.keycloak.representations.provider.ScriptProviderDescriptor.AUTHENTICATORS;
 import static org.keycloak.representations.provider.ScriptProviderDescriptor.MAPPERS;
@@ -57,6 +57,7 @@ import io.quarkus.agroal.spi.JdbcDataSourceBuildItem;
 import io.quarkus.datasource.deployment.spi.DevServicesDatasourceResultBuildItem;
 import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.Consume;
+import io.quarkus.deployment.builditem.BootstrapConfigSetupCompleteBuildItem;
 import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
 import io.quarkus.deployment.builditem.HotDeploymentWatchedFileBuildItem;
@@ -202,7 +203,7 @@ class KeycloakProcessor {
      * @param config
      * @param descriptors
      */
-    @BuildStep
+    @BuildStep(onlyIf = IsLegacyStoreEnabled.class)
     @Record(ExecutionTime.RUNTIME_INIT)
     void configurePersistenceUnits(HibernateOrmConfig config,
             List<PersistenceXmlDescriptorBuildItem> descriptors,
@@ -228,7 +229,7 @@ class KeycloakProcessor {
         }
     }
 
-    @BuildStep(onlyIf = IsDefaultPersistenceUnitEnabled.class)
+    @BuildStep(onlyIf = IsLegacyStoreEnabled.class)
     void produceDefaultPersistenceUnit(BuildProducer<PersistenceXmlDescriptorBuildItem> producer) {
         ParsedPersistenceXmlDescriptor descriptor = PersistenceXmlParser.locateIndividualPersistenceUnit(
                 Thread.currentThread().getContextClassLoader().getResource("default-persistence.xml"));
@@ -277,8 +278,8 @@ class KeycloakProcessor {
      *
      * @param recorder
      */
-    @Consume(RuntimeConfigSetupCompleteBuildItem.class)
-    @Record(ExecutionTime.RUNTIME_INIT)
+    @Consume(BootstrapConfigSetupCompleteBuildItem.class)
+    @Record(ExecutionTime.STATIC_INIT)
     @BuildStep
     KeycloakSessionFactoryPreInitBuildItem configureProviders(KeycloakRecorder recorder, List<PersistenceXmlDescriptorBuildItem> descriptors) {
         Profile.setInstance(new QuarkusProfile());
@@ -522,7 +523,19 @@ class KeycloakProcessor {
 
         for (Spi spi : pm.loadSpis()) {
             Map<Class<? extends Provider>, Map<String, ProviderFactory>> providers = new HashMap<>();
-            List<ProviderFactory> loadedFactories = new ArrayList<>(pm.load(spi));
+            String provider = Config.getProvider(spi.getName());
+            List<ProviderFactory> loadedFactories = new ArrayList<>();
+
+            if (provider == null) {
+                loadedFactories.addAll(pm.load(spi));
+            } else {
+                ProviderFactory factory = pm.load(spi, provider);
+
+                if (factory != null) {
+                    loadedFactories.add(factory);
+                }
+            }
+
             Map<String, ProviderFactory> deployedScriptProviders = loadDeployedScriptProviders(classLoader, spi);
 
             loadedFactories.addAll(deployedScriptProviders.values());
@@ -547,7 +560,9 @@ class KeycloakProcessor {
                 }
             }
 
-            factories.put(spi, providers);
+            if (!providers.isEmpty()) {
+                factories.put(spi, providers);
+            }
         }
 
         return factories;

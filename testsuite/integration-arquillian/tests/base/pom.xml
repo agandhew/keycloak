@@ -849,9 +849,13 @@
                                 <keycloak.eventsStore.provider>map</keycloak.eventsStore.provider>
                                 <keycloak.actionToken.provider>map</keycloak.actionToken.provider>
                                 <keycloak.singleUseObject.provider>map</keycloak.singleUseObject.provider>
+                                <keycloak.publicKeyStorage.provider>map</keycloak.publicKeyStorage.provider>
                                 <keycloak.authorizationCache.enabled>false</keycloak.authorizationCache.enabled>
                                 <keycloak.realmCache.enabled>false</keycloak.realmCache.enabled>
                                 <keycloak.userCache.enabled>false</keycloak.userCache.enabled>
+                                <keycloak.publicKeyCache.enabled>false</keycloak.publicKeyCache.enabled>
+                                <keycloak.userSessionPersister.provider></keycloak.userSessionPersister.provider>
+                                <keycloak.userFederatedStorage.provider></keycloak.userFederatedStorage.provider>
                           </systemPropertyVariables>
                       </configuration>
                     </plugin>
@@ -896,6 +900,8 @@
                                 <keycloak.loginFailure.map.storage.provider>jpa</keycloak.loginFailure.map.storage.provider>
                                 <keycloak.realm.map.storage.provider>jpa</keycloak.realm.map.storage.provider>
                                 <keycloak.role.map.storage.provider>jpa</keycloak.role.map.storage.provider>
+                                <keycloak.singleUseObject.map.storage.provider>jpa</keycloak.singleUseObject.map.storage.provider>
+                                <keycloak.user.map.storage.provider>jpa</keycloak.user.map.storage.provider>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>

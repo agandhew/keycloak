@@ -27,9 +27,8 @@ import java.nio.file.Paths;
 import java.util.stream.Collectors;
 import javax.enterprise.context.ApplicationScoped;
 import org.infinispan.commons.util.FileLookupFactory;
-import org.keycloak.quarkus.runtime.Environment;
 import org.keycloak.quarkus.runtime.KeycloakRecorder;
-import org.keycloak.quarkus.runtime.storage.infinispan.CacheManagerFactory;
+import org.keycloak.quarkus.runtime.storage.legacy.infinispan.CacheManagerFactory;
 
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -43,7 +42,7 @@ public class CLusteringBuildSteps {
 
     @Consume(KeycloakSessionFactoryPreInitBuildItem.class)
     @Record(ExecutionTime.RUNTIME_INIT)
-    @BuildStep
+    @BuildStep(onlyIf = IsLegacyStoreEnabled.class)
     void configureInfinispan(KeycloakRecorder recorder, BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItems, ShutdownContextBuildItem shutdownContext) {
         String configFile = getConfigValue("kc.spi-connections-infinispan-quarkus-config-file").getValue();
 
