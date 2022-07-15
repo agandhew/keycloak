@@ -22,29 +22,24 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
 import javax.sql.DataSource;
 
-import org.hibernate.boot.Metadata;
 import org.hibernate.cfg.AvailableSettings;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.event.service.spi.EventListenerRegistry;
-import org.hibernate.event.spi.EventType;
-import org.hibernate.jpa.boot.spi.IntegratorProvider;
-import org.hibernate.service.spi.SessionFactoryServiceRegistry;
+import org.hibernate.jpa.boot.internal.ParsedPersistenceXmlDescriptor;
+import org.hibernate.jpa.boot.internal.PersistenceXmlParser;
+import org.hibernate.jpa.boot.spi.Bootstrap;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
 import org.keycloak.authorization.model.PermissionTicket;
@@ -68,6 +63,7 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserLoginFailureModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.UserSessionModel;
 import org.keycloak.models.dblock.DBLockProvider;
 import org.keycloak.models.map.client.MapProtocolMapperEntity;
 import org.keycloak.models.map.client.MapProtocolMapperEntityImpl;
@@ -131,6 +127,9 @@ import org.keycloak.models.map.storage.jpa.role.entity.JpaRoleEntity;
 import org.keycloak.models.map.storage.jpa.singleUseObject.JpaSingleUseObjectMapKeycloakTransaction;
 import org.keycloak.models.map.storage.jpa.singleUseObject.entity.JpaSingleUseObjectEntity;
 import org.keycloak.models.map.storage.jpa.updater.MapJpaUpdaterProvider;
+import org.keycloak.models.map.storage.jpa.userSession.JpaUserSessionMapKeycloakTransaction;
+import org.keycloak.models.map.storage.jpa.userSession.entity.JpaClientSessionEntity;
+import org.keycloak.models.map.storage.jpa.userSession.entity.JpaUserSessionEntity;
 import org.keycloak.models.map.storage.jpa.user.JpaUserMapKeycloakTransaction;
 import org.keycloak.models.map.storage.jpa.user.entity.JpaUserConsentEntity;
 import org.keycloak.models.map.storage.jpa.user.entity.JpaUserEntity;
@@ -152,6 +151,14 @@ public class JpaMapStorageProviderFactory implements
     private static final Logger logger = Logger.getLogger(JpaMapStorageProviderFactory.class);
 
     public static final String HIBERNATE_DEFAULT_SCHEMA = "hibernate.default_schema";
+
+    public static Map<String, Object> configureHibernateProperties() {
+        Map<String, Object> properties = new HashMap<>();
+
+        properties.put("hibernate.integrator_provider", new KeycloakIntegratorProvider());
+
+        return properties;
+    }
 
     private volatile EntityManagerFactory emf;
     private final Set<Class<?>> validatedModels = ConcurrentHashMap.newKeySet();
@@ -203,9 +210,12 @@ public class JpaMapStorageProviderFactory implements
         .constructor(JpaUserConsentEntity.class,                JpaUserConsentEntity::new)
         .constructor(JpaUserFederatedIdentityEntity.class,      JpaUserFederatedIdentityEntity::new)
         .constructor(MapUserCredentialEntity.class,             MapUserCredentialEntityImpl::new)
+        //user/client session
+        .constructor(JpaClientSessionEntity.class,              JpaClientSessionEntity::new)
+        .constructor(JpaUserSessionEntity.class,                JpaUserSessionEntity::new)
         .build();
 
-    private static final Map<Class<?>, Function<EntityManager, MapKeycloakTransaction>> MODEL_TO_TX = new HashMap<>();
+    private static final Map<Class<?>, BiFunction<KeycloakSession, EntityManager, MapKeycloakTransaction>> MODEL_TO_TX = new HashMap<>();
     static {
         //auth-sessions
         MODEL_TO_TX.put(RootAuthenticationSessionModel.class,   JpaRootAuthenticationSessionMapKeycloakTransaction::new);
@@ -234,6 +244,8 @@ public class JpaMapStorageProviderFactory implements
         MODEL_TO_TX.put(UserLoginFailureModel.class,            JpaUserLoginFailureMapKeycloakTransaction::new);
         //users
         MODEL_TO_TX.put(UserModel.class,                        JpaUserMapKeycloakTransaction::new);
+        //sessions
+        MODEL_TO_TX.put(UserSessionModel.class,                 JpaUserSessionMapKeycloakTransaction::new);
     }
 
     public JpaMapStorageProviderFactory() {
@@ -242,8 +254,8 @@ public class JpaMapStorageProviderFactory implements
         this.sessionTxKey = SESSION_TX_PREFIX + index;
     }
 
-    public MapKeycloakTransaction createTransaction(Class<?> modelType, EntityManager em) {
-        return MODEL_TO_TX.get(modelType).apply(em);
+    public MapKeycloakTransaction createTransaction(KeycloakSession session, Class<?> modelType, EntityManager em) {
+        return MODEL_TO_TX.get(modelType).apply(session, em);
     }
 
     @Override
@@ -294,87 +306,57 @@ public class JpaMapStorageProviderFactory implements
         if (emf == null) {
             synchronized (this) {
                 if (emf == null) {
-                    logger.debugf("Initializing JPA connections %s", StackUtil.getShortStackTrace());
-
-                    Map<String, Object> properties = new HashMap<>();
-
-                    String unitName = config.get("persistenceUnitName", "keycloak-jpa-default");
-
-                    String dataSource = config.get("dataSource");
-                    if (dataSource != null) {
-                        properties.put(AvailableSettings.JPA_NON_JTA_DATASOURCE, dataSource);
-                    } else {
-                        properties.put(AvailableSettings.JPA_JDBC_URL, config.get("url"));
-                        properties.put(AvailableSettings.JPA_JDBC_DRIVER, config.get("driver"));
-
-                        String user = config.get("user");
-                        if (user != null) {
-                            properties.put(AvailableSettings.JPA_JDBC_USER, user);
-                        }
-                        String password = config.get("password");
-                        if (password != null) {
-                            properties.put(AvailableSettings.JPA_JDBC_PASSWORD, password);
-                        }
-                    }
-
-                    String schema = config.get("schema");
-                    if (schema != null) {
-                        properties.put(HIBERNATE_DEFAULT_SCHEMA, schema);
-                    }
-
-                    properties.put("hibernate.show_sql", config.getBoolean("showSql", false));
-                    properties.put("hibernate.format_sql", config.getBoolean("formatSql", true));
-                    properties.put("hibernate.dialect", config.get("driverDialect"));
-
-                    properties.put(
-                            "hibernate.integrator_provider",
-                            (IntegratorProvider) () -> Collections.singletonList(
-                                    new org.hibernate.integrator.spi.Integrator() {
-
-                                        @Override
-                                        public void integrate(Metadata metadata, SessionFactoryImplementor sessionFactoryImplementor,
-                                                              SessionFactoryServiceRegistry sessionFactoryServiceRegistry) {
-                                            final EventListenerRegistry eventListenerRegistry =
-                                                    sessionFactoryServiceRegistry.getService( EventListenerRegistry.class );
-
-                                            eventListenerRegistry.appendListeners(EventType.PRE_INSERT, JpaOptimisticLockingListener.INSTANCE);
-                                            eventListenerRegistry.appendListeners(EventType.PRE_UPDATE, JpaOptimisticLockingListener.INSTANCE);
-                                            eventListenerRegistry.appendListeners(EventType.PRE_DELETE, JpaOptimisticLockingListener.INSTANCE);
-
-                                            eventListenerRegistry.appendListeners(EventType.PRE_INSERT, JpaEntityVersionListener.INSTANCE);
-                                            eventListenerRegistry.appendListeners(EventType.PRE_UPDATE, JpaEntityVersionListener.INSTANCE);
-                                            eventListenerRegistry.appendListeners(EventType.PRE_DELETE, JpaEntityVersionListener.INSTANCE);
-
-                                            // replace auto-flush listener
-                                            eventListenerRegistry.setListeners(EventType.AUTO_FLUSH, JpaAutoFlushListener.INSTANCE);
-                                        }
-
-                                        @Override
-                                        public void disintegrate(SessionFactoryImplementor sessionFactoryImplementor,
-                                                                 SessionFactoryServiceRegistry sessionFactoryServiceRegistry) {
-
-                                        }
-                                    }
-                            )
-                    );
-
-                    Integer isolation = config.getInt("isolation");
-                    if (isolation != null) {
-                        if (isolation < Connection.TRANSACTION_REPEATABLE_READ) {
-                            logger.warn("Concurrent requests may not be reliable with transaction level lower than TRANSACTION_REPEATABLE_READ.");
-                        }
-                        properties.put(AvailableSettings.ISOLATION, String.valueOf(isolation));
-                    } else {
-                        // default value is TRANSACTION_READ_COMMITTED
-                        logger.warn("Concurrent requests may not be reliable with transaction level lower than TRANSACTION_REPEATABLE_READ.");
-                    }
-
-                    logger.trace("Creating EntityManagerFactory");
-                    this.emf = Persistence.createEntityManagerFactory(unitName, properties);
-                    logger.trace("EntityManagerFactory created");
+                    this.emf = createEntityManagerFactory();
                 }
             }
         }
+    }
+
+    protected EntityManagerFactory createEntityManagerFactory() {
+        logger.debugf("Initializing JPA connections %s", StackUtil.getShortStackTrace());
+
+        Map<String, Object> properties = new HashMap<>();
+        String dataSource = config.get("dataSource");
+
+        if (dataSource != null) {
+            properties.put(AvailableSettings.JPA_NON_JTA_DATASOURCE, dataSource);
+        } else {
+            properties.put(AvailableSettings.JPA_JDBC_URL, config.get("url"));
+            properties.put(AvailableSettings.JPA_JDBC_DRIVER, config.get("driver"));
+
+            String user = config.get("user");
+            if (user != null) {
+                properties.put(AvailableSettings.JPA_JDBC_USER, user);
+            }
+            String password = config.get("password");
+            if (password != null) {
+                properties.put(AvailableSettings.JPA_JDBC_PASSWORD, password);
+            }
+        }
+
+        String schema = config.get("schema");
+        if (schema != null) {
+            properties.put(HIBERNATE_DEFAULT_SCHEMA, schema);
+        }
+
+        properties.put("hibernate.show_sql", config.getBoolean("showSql", false));
+        properties.put("hibernate.format_sql", config.getBoolean("formatSql", true));
+        properties.put("hibernate.dialect", config.get("driverDialect"));
+
+        properties.putAll(configureHibernateProperties());
+
+        logger.trace("Creating EntityManagerFactory");
+        ParsedPersistenceXmlDescriptor descriptor = PersistenceXmlParser.locateIndividualPersistenceUnit(
+                JpaMapStorageProviderFactory.class.getClassLoader()
+                        .getResource("default-map-jpa-persistence.xml"));
+        EntityManagerFactory emf = Bootstrap.getEntityManagerFactoryBuilder(descriptor, properties).build();
+        logger.trace("EntityManagerFactory created");
+
+        return emf;
+    }
+
+    protected EntityManagerFactory getEntityManagerFactory() {
+        return emf;
     }
 
     public void validateAndUpdateSchema(KeycloakSession session, Class<?> modelType) {
@@ -415,7 +397,7 @@ public class JpaMapStorageProviderFactory implements
         }
     }
 
-    private Connection getConnection() {
+    protected Connection getConnection() {
         try {
             String dataSourceLookup = config.get("dataSource");
             if (dataSourceLookup != null) {
