@@ -61,6 +61,7 @@ public class TestsuiteCLI {
             UserCommands.Count.class,
             UserCommands.GetUser.class,
             GroupCommands.Create.class,
+            IdentityProviderCommand.Create.class,
             SyncDummyFederationProviderCommand.class,
             RoleCommands.CreateRoles.class,
             CacheCommands.ListCachesCommand.class,
