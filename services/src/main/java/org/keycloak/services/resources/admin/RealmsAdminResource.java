@@ -178,6 +178,8 @@ public class RealmsAdminResource {
                 && !auth.getRealm().equals(realm)) {
             throw new ForbiddenException();
         }
+
+
         AdminPermissionEvaluator realmAuth = AdminPermissions.evaluator(session, realm, auth);
 
         AdminEventBuilder adminEvent = new AdminEventBuilder(realm, auth, session, clientConnection);

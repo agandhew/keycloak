@@ -16,41 +16,8 @@
  */
 package org.keycloak.services.resources.admin;
 
-import static org.keycloak.utils.LockObjectsForModification.lockUserSessionsForModification;
-import static org.keycloak.util.JsonSerialization.readValue;
-
-import java.security.cert.X509Certificate;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.StreamingOutput;
-
 import com.fasterxml.jackson.core.type.TypeReference;
-
+import com.sun.xml.ws.policy.privateutil.PolicyUtils;
 import org.jboss.logging.Logger;
 import org.jboss.resteasy.annotations.cache.NoCache;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
@@ -115,6 +82,39 @@ import org.keycloak.storage.ExportImportManager;
 import org.keycloak.storage.LegacyStoreSyncEvent;
 import org.keycloak.utils.ProfileHelper;
 import org.keycloak.utils.ReservedCharValidator;
+
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.FormParam;
+import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.StreamingOutput;
+import java.security.cert.X509Certificate;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.keycloak.util.JsonSerialization.readValue;
+import static org.keycloak.utils.LockObjectsForModification.lockUserSessionsForModification;
 
 /**
  * Base resource class for the admin REST api of one realm
@@ -367,9 +367,16 @@ public class RealmAdminResource {
     @GET
     @NoCache
     @Produces(MediaType.APPLICATION_JSON)
-    public RealmRepresentation getRealm() {
+    public RealmRepresentation getRealm(@QueryParam("includeIdp") @DefaultValue("true") final Boolean includeIdp) {
         if (auth.realm().canViewRealm()) {
-            return ModelToRepresentation.toRepresentation(session, realm, false);
+            if(includeIdp)
+                return ModelToRepresentation.toRepresentation(session, realm, false);
+            else {
+                RealmRepresentation rep = ModelToRepresentation.toRepresentation(session, realm, false);
+                rep.setIdentityProviders(java.util.Collections.emptyList());
+                rep.setIdentityProviderMappers(java.util.Collections.emptyList());
+                return rep;
+            }
         } else {
             auth.realm().requireViewRealmNameList();
 
