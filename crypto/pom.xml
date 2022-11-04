@@ -30,9 +30,9 @@
     <artifactId>keycloak-crypto-parent</artifactId>
     <packaging>pom</packaging>
 
-    <modules>
-        <module>default</module>
-        <module>fips1402</module>
-        <module>elytron</module>
-    </modules>
+<!--    <modules>-->
+<!--        <module>default</module>-->
+<!--        <module>fips1402</module>-->
+<!--        <module>elytron</module>-->
+<!--    </modules>-->
 </project>
