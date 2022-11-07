@@ -369,14 +369,13 @@ public class RealmAdminResource {
     @Produces(MediaType.APPLICATION_JSON)
     public RealmRepresentation getRealm(@QueryParam("includeIdp") @DefaultValue("true") final Boolean includeIdp) {
         if (auth.realm().canViewRealm()) {
-            if(includeIdp)
-                return ModelToRepresentation.toRepresentation(session, realm, false);
-            else {
-                RealmRepresentation rep = ModelToRepresentation.toRepresentation(session, realm, false);
-                rep.setIdentityProviders(java.util.Collections.emptyList());
-                rep.setIdentityProviderMappers(java.util.Collections.emptyList());
+            RealmRepresentation rep = ModelToRepresentation.toRepresentation(session, realm, false);
+            if (Boolean.TRUE.equals(includeIdp)) {
                 return rep;
             }
+            rep.setIdentityProviders(java.util.Collections.emptyList());
+            rep.setIdentityProviderMappers(java.util.Collections.emptyList());
+            return rep;
         } else {
             auth.realm().requireViewRealmNameList();
 
