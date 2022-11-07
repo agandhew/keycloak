@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class IdentityProviderCommand {
+public class IdentityProviderCommands {
 
     public static class Create extends AbstractCommand {
 
